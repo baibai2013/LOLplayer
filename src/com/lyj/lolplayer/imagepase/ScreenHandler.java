@@ -12,7 +12,10 @@ import java.util.Calendar;
 
 import javax.imageio.ImageIO;
 
-import com.lyj.lolplayer.play.report.ReportHandler;
+import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacpp.opencv_imgcodecs;
+import org.bytedeco.javacpp.opencv_imgproc;
+
 import com.lyj.lolplayer.utils.PathUtils;
 
 /**
@@ -38,13 +41,27 @@ public class ScreenHandler {
 			e.printStackTrace();
 		}
 		
+		
+	}
+	
+	
+	public void opencvImage(String path){
+		IplImage image = opencv_imgcodecs.cvLoadImageBGRA(path);
+		if(image != null){
+			opencv_imgproc.cvSmooth(image, image);
+			opencv_imgcodecs.cvSaveImage(path+".jpg",image);
+//			opencv_imgcodecs.cvReleaseImage(image);
+		}
+		
 	}
 	
 	
 	public static void main(String[] args) {
 		
 		String path = ScreenHandler.getInstance().catFullScreen();
-		ReportHandler.getInstance().sendEmailToQQ(path);
+		ScreenHandler.getInstance().opencvImage(path);
+		
+//		ReportHandler.getInstance().sendEmailToQQ(path);
 	}
 	
 	
