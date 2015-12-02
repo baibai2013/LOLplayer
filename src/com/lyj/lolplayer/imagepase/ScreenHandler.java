@@ -161,8 +161,6 @@ public class ScreenHandler {
 			cvGoodFeaturesToTrack(grayImage, corner1, corner2, corners, corner_count,0.04,10);
 			System.out.println("number corners found :"+ corner_count.get());
 			
-
-			
 			
 			if(corner_count.get() > 0){
 				for (int j = 0; j < corner_count.get(); j++) {
@@ -183,8 +181,6 @@ public class ScreenHandler {
 			cvReleaseImage(grayImage);
 			
 			
-			
-
 		}
 
 	}

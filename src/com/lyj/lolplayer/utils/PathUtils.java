@@ -6,7 +6,7 @@ import com.lyj.lolplayer.Common;
 
 public class PathUtils {
 	
-	public static final String appSavePath = "/Users/lili/Desktop/"+Common.AppName;
+	public static final String appSavePath = "/Users/li/Desktop/"+Common.AppName;
 	
 	public static String getAppPath(){
 		return appSavePath;
