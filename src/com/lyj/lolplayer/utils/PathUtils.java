@@ -17,6 +17,11 @@ public class PathUtils {
 		return checkAndMkdirs(screenShotsPath);
 	}
 	
+	public static String getSimplePath(){
+		String screenShotsPath = getAppPath() + "/sample/";
+		return checkAndMkdirs(screenShotsPath);
+	}
+	
 	public static String checkAndMkdirs(String dir) {
 		File file = new File(dir);
 		if (file.exists() == false) {
