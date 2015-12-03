@@ -7,18 +7,23 @@ import static org.bytedeco.javacpp.opencv_core.cvCopy;
 import static org.bytedeco.javacpp.opencv_core.cvCreateImage;
 import static org.bytedeco.javacpp.opencv_core.cvCreateMat;
 import static org.bytedeco.javacpp.opencv_core.cvGetSize;
+import static org.bytedeco.javacpp.opencv_core.cvMinMaxLoc;
 import static org.bytedeco.javacpp.opencv_core.cvPoint;
 import static org.bytedeco.javacpp.opencv_core.cvReleaseImage;
 import static org.bytedeco.javacpp.opencv_core.cvScalar;
 import static org.bytedeco.javacpp.opencv_core.cvSetZero;
 import static org.bytedeco.javacpp.opencv_core.cvSize;
+import static org.bytedeco.javacpp.opencv_core.cvZero;
 import static org.bytedeco.javacpp.opencv_core.cvarrToMat;
 import static org.bytedeco.javacpp.opencv_imgcodecs.cvLoadImage;
 import static org.bytedeco.javacpp.opencv_imgcodecs.cvSaveImage;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_BGR2GRAY;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_TM_CCORR_NORMED;
 import static org.bytedeco.javacpp.opencv_imgproc.cvCircle;
 import static org.bytedeco.javacpp.opencv_imgproc.cvCvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.cvGoodFeaturesToTrack;
+import static org.bytedeco.javacpp.opencv_imgproc.cvMatchTemplate;
+import static org.bytedeco.javacpp.opencv_imgproc.cvRectangle;
 import static org.bytedeco.javacpp.opencv_imgproc.cvResize;
 
 import java.awt.AWTException;
@@ -39,18 +44,24 @@ import java.util.Calendar;
 
 import javax.imageio.ImageIO;
 
+import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.javacpp.opencv_core.CvMat;
+import org.bytedeco.javacpp.opencv_core.CvPoint;
 import org.bytedeco.javacpp.opencv_core.CvPoint2D32f;
+import org.bytedeco.javacpp.opencv_core.CvRect;
 import org.bytedeco.javacpp.opencv_core.CvScalar;
 import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacpp.opencv_core.Point;
 import org.bytedeco.javacpp.opencv_imgcodecs;
 import org.bytedeco.javacpp.opencv_objdetect.HOGDescriptor;
 import org.bytedeco.javacpp.helper.opencv_core.CvArr;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
+import com.lyj.lolplayer.LOLPlayer;
+import com.lyj.lolplayer.play.report.ReportHandler;
 import com.lyj.lolplayer.utils.PathUtils;
 
 /**
@@ -59,15 +70,31 @@ import com.lyj.lolplayer.utils.PathUtils;
  * @author lili
  *
  */
-public class ScreenHandler {
+public class ScreenHandler implements Runnable{
 	private Robot robot;
-	public static ScreenHandler defaultScreenHandler = new ScreenHandler();
 
-	public static ScreenHandler getInstance() {
-		return defaultScreenHandler;
+	private boolean isrunning = true;
+	
+	LOLPlayer playerRobot;
+
+	private long sleepTime = 1000 * 5;
+	
+	
+	public static ScreenHandler getDefaultScreenHandler(LOLPlayer player){
+		ScreenHandler screenHandler = new ScreenHandler(player);
+		Thread thread = new Thread(screenHandler);
+		thread.start();
+		
+		return screenHandler;
 	}
-
+	
+	
 	public ScreenHandler() {
+		
+	}
+	
+	ScreenHandler(LOLPlayer player){
+		this.playerRobot = player;
 
 		try {
 			robot = new Robot();
@@ -75,8 +102,29 @@ public class ScreenHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
 	}
+
+	
+	
+
+	public long getSleepTime() {
+		return sleepTime;
+	}
+
+
+	public void setSleepTime(long sleepTime) {
+		this.sleepTime = sleepTime;
+	}
+
+
+	public boolean isIsrunning() {
+		return isrunning;
+	}
+
+	public void setIsrunning(boolean isrunning) {
+		this.isrunning = isrunning;
+	}
+
 
 	public static void ShowImage(IplImage image, String caption) {
 		CvMat mat = image.asCvMat();
@@ -345,17 +393,123 @@ public class ScreenHandler {
 //		svm.save(PathUtils.getAppPath() + "/HOG_SVM_DATA.xml");
 
 	}
+	
+	
+	/**
+	 * 模板匹配
+	 */
+	public Point templateMatching(String templatePath,String srcPath){
+		int width = 100;
+		int height = 100;
+		
+		IplImage src = cvLoadImage(srcPath,0);//-1 原图 0灰度图 1彩图
+		if(src == null){
+			System.out.println("src is empty!");
+		}
+		
+		IplImage temp = cvLoadImage(templatePath,0);
+		if(temp == null){
+			System.out.println("templete is empty!");
+		}
+		
+		IplImage result = cvCreateImage(cvSize(src.width() - temp.width() + 1, src.height() - temp.height() + 1), IPL_DEPTH_32F, src.nChannels());
+		
+		cvZero(result);//矩阵初始0
+		
+		cvMatchTemplate(src, temp, result, CV_TM_CCORR_NORMED);
+		
+		DoublePointer min_val = new DoublePointer();
+		DoublePointer max_val = new DoublePointer();
+		
+		CvPoint minLoc = new CvPoint();
+		CvPoint maxLoc = new CvPoint();
+		
+		cvMinMaxLoc(result, min_val, max_val,minLoc,maxLoc,null);
+		
+//		System.out.println("min_val:"+min_val.position(0)+":"+min_val.position(1));
+		System.out.println("max_val:"+max_val.position(0)+":"+max_val.position(1));
+		
+		CvPoint point = new CvPoint();
+		point.x(maxLoc.x() + temp.width());
+		point.y(maxLoc.y() + temp.height());
+		
+//		img -- 图像.
+//		pt1 -- 矩形的一个顶点。
+//		pt2 -- 矩形对角线上的另一个顶点
+//		color -- 线条颜色 (RGB) 或亮度（灰度图像 ）(grayscale image）。
+//		thickness -- 组成矩形的线条的粗细程度。取负值时（如 CV_FILLED）函数绘制填充了色彩的矩形。
+//		line_type -- 线条的类型。见cvLine的描述
+//		shift -- 坐标点的小数点位数。
+//		CvSize cvSize(int height,int width)
+		cvRectangle(src, maxLoc, point, CvScalar.RED,-1,8,0);
+		
+		
+		Point centerPoint = new Point();
+		centerPoint.x(maxLoc.x() + (int)(temp.width() * 0.5));
+		centerPoint.y(maxLoc.y() + (int)(temp.height() * 0.5));
+		
+		
+		System.out.println("point center:["+centerPoint.x() + ":" + centerPoint.y()+"]");
+		System.out.println("minLoc:{"+minLoc.x()+":"+minLoc.y()+"}");
+		System.out.println("MaxLoc:{"+maxLoc.x()+":"+maxLoc.y()+"}");
+		System.out.println("tempWH:{"+temp.width()+":"+temp.height()+"}");
+		
+		
+		
+		CvRect rect = new CvRect();
+		rect.x(maxLoc.x());
+		rect.y(maxLoc.y());
+		rect.width(temp.width() + width);
+		rect.height(temp.height() + height);
+		
+		
+		
+//		cvSetImageROI(src, rect);//ROI 感兴趣区域
+//		IplImage imageNew = cvCreateImage(cvGetSize(src), src.depth(), src.nChannels());
+//		cvCopy(src, imageNew);
+//		ShowImage(src, "src");
+//		ShowImage(result, "result");
+		
+		
+//		SVM svm = SVM.create();
+//		Mat mdataMat = new Mat(result);
+//		Mat mresMat = new Mat(resMat);
+//		svm.train(mdataMat,10,mresMat);
+//		svm.save(PathUtils.getAppPath() + "/HOG_SVM_DATA.xml");
+		
+		
+//		ShowImage(imageNew, "imageNew");
+		cvReleaseImage(temp);
+		cvReleaseImage(src);
+		cvReleaseImage(result);
+		
+		return centerPoint;
+		
+		
+	}
+	
 
 	public static void main(String[] args) {
 
-		// String path = ScreenHandler.getInstance().catFullScreen();
+		 String path = new ScreenHandler(null).catFullScreen();
 		// ScreenHandler.getInstance().opencvImage(
 		// PathUtils.getAppScreenShotsPath() + "111.jpg");
 
-		// ReportHandler.getInstance().sendEmailToQQ(path);
+		 ReportHandler.getInstance().sendEmailToQQ(path);
 
 		// ScreenHandler.getInstance().makeSampleList();
-		ScreenHandler.getInstance().trainHOGAndSVM();
+//		ScreenHandler.getInstance().trainHOGAndSVM();
+		
+//		String templatePath = PathUtils.getAppPath() + "lau.png";
+//		String srcPath = PathUtils.getAppScreenShotsPath() + "111.jpg";
+		
+//		System.out.println(templatePath +"\n"+ path);
+		
+//		 ScreenHandler.getInstance().templateMatching(templatePath, path);
+		
+		
+		
+		
 	}
 
 	/**
@@ -379,6 +533,36 @@ public class ScreenHandler {
 		}
 
 		return savePath;
+	}
+
+	@Override
+	public void run() {
+		while (isrunning) {
+				try {
+					Thread.sleep(sleepTime);
+					System.out.println("->ScreenHandler catFullScreen");
+					String path = catFullScreen();
+					
+					synchronized (path) {
+						playerRobot.imgPaths.push(path);
+					}
+					
+
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			
+			
+		}
+	}
+
+
+	public static void removeimg(String srcPath) {
+		File file = new File(srcPath);
+		if (file.exists()) {
+			file.delete();
+		}
 	}
 
 }

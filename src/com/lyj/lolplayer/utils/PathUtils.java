@@ -6,19 +6,19 @@ import com.lyj.lolplayer.Common;
 
 public class PathUtils {
 	
-	public static final String appSavePath = "/Users/li/Desktop/"+Common.AppName;
+	public static final String appSavePath = "/Users/lili/Desktop/"+Common.AppName+"/";
 	
 	public static String getAppPath(){
 		return appSavePath;
 	}
 	
 	public static String getAppScreenShotsPath(){
-		String screenShotsPath = getAppPath() + "/screenShots/";
+		String screenShotsPath = getAppPath() + "screenShots/";
 		return checkAndMkdirs(screenShotsPath);
 	}
 	
 	public static String getSimplePath(){
-		String screenShotsPath = getAppPath() + "/sample/";
+		String screenShotsPath = getAppPath() + "sample/";
 		return checkAndMkdirs(screenShotsPath);
 	}
 	
